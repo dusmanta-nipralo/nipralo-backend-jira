@@ -1,0 +1,6 @@
+#PORT=8080
+# MONGO_URI=mongodb://localhost:27017/yourdb
+#MONGO_URI=mongodb://127.0.0.1:27017/test
+#MONGO_URI=mongodb://127.0.0.1:27017/jira
+#JWT_SECRET=your_jwt_secret_key
+#PROJECT_TOKEN_SECRET=your_project_token_secret_key
