@@ -1,5 +1,5 @@
 const Client = require('../models/client');
-const { Resource } = require('../models/resource'); // ✅ Destructured as you wrote
+const { Resource } = require('../models/resource'); //  Destructured as you wrote
 
 // ======================
 // CLIENT CRUD OPERATIONS
@@ -98,7 +98,7 @@ exports.softDeleteClient = async (req, res) => {
     );
     if (!client) return res.json({ error: 'Client not found.' });
 
-    res.json({ message: 'Client soft deleted.' });
+    res.json({ message: 'Client deleted.' });
   } catch (err) {
     res.json({ error: 'Failed to delete client.' });
   }

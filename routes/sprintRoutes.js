@@ -1,0 +1,13 @@
+const express = require('express');
+const router = express.Router();
+const sprintController = require('../controllers/sprintController');
+
+router.post('/', sprintController.createSprint);
+router.get('/', sprintController.getAllSprints);
+router.get('/:id', sprintController.getSprintById);
+router.put('/:id', sprintController.updateSprint);
+router.delete('/:id/soft-delete', sprintController.softDeleteSprint);
+router.patch('/:id/restore', sprintController.restoreSprint);
+router.get('/:id/summary', sprintController.getSprintSummary);
+
+module.exports = router;

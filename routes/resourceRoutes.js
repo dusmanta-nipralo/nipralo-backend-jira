@@ -11,9 +11,10 @@ router.use(validAuth);
 router.post('/:clientId/resources', clientController.createResource);
 router.get('/:clientId/resources', clientController.getResources);
 router.get('/:clientId/resources/:id', clientController.getResourceById);
-router.put('/:clientId/resources/:id', clientController.updateResource);
-router.delete('/:clientId/resources/:id', clientController.softDeleteResource);
-router.patch('/:clientId/resources/:id', clientController.restoreResource);
+router.put('/:id', clientController.updateResource);
+router.delete('/:id/delete', clientController.softDeleteResource);
+router.patch('/:id/restore', clientController.restoreResource);
 
-
+router.get('/', clientController.getResources);
+router.get('/:id', clientController.getResourceById);
 module.exports = router;

@@ -1,24 +1,47 @@
 const Project = require('../models/project');
+const TeamMember = require('../models/teamMember');
+const { sendProjectCreationEmail } = require('../utils/nodemailerProject');
 
-// Create a new project
 exports.createProject = async (req, res) => {
   try {
-    const { name, description, lead, openTasks } = req.body;
-    const project = new Project({ name, description, lead, openTasks });
+    const { name, description, lead } = req.body;
+
+    const project = new Project({ name, description, lead });
     await project.save();
-    res.status(201).json(project);
+
+    // 🔍 Find team members not yet assigned to any project
+    const unassignedMembers = await TeamMember.find({ 
+      $or: [ { projectId: { $exists: false } }, { projectId: null } ],
+      status: 1
+    });
+
+    const emails = unassignedMembers.map(m => m.email);
+
+    console.log("📢 Unassigned team members:", emails);
+
+    // 📬 Send project creation email to them
+    if (emails.length > 0) {
+      await sendProjectCreationEmail(emails, name);
+    }
+
+    res.status(201).json({
+      message: 'Project created',
+      project,
+      emailSentTo: emails
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create project.', details: err.message });
+    res.status(500).json({ error: 'Failed to create project', details: err.message });
   }
 };
+
 
 // Get all active projects
 exports.getProjects = async (req, res) => {
   try {
     const projects = await Project.find({ status: 1 });
-    res.status(200).json(projects);
+    res.json(projects);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch projects.' });
+    res.json({ error: 'Failed to fetch projects.' });
   }
 };
 
@@ -26,10 +49,10 @@ exports.getProjects = async (req, res) => {
 exports.getProjectById = async (req, res) => {
   try {
     const project = await Project.findOne({ _id: req.params.id, status: 1 });
-    if (!project) return res.status(404).json({ error: 'Project not found or deleted.' });
-    res.status(200).json(project);
+    if (!project) return res.json({ error: 'Project not found or deleted.' });
+    res.json(project);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch project.' });
+    res.json({ error: 'Failed to fetch project.' });
   }
 };
 
@@ -41,10 +64,10 @@ exports.updateProject = async (req, res) => {
       req.body,
       { new: true, runValidators: true }
     );
-    if (!project) return res.status(404).json({ error: 'Project not found or deleted.' });
-    res.status(200).json(project);
+    if (!project) return res.json({ error: 'Project not found or deleted.' });
+    res.json(project);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update project.' });
+    res.json({ error: 'Failed to update project.' });
   }
 };
 
@@ -52,17 +75,16 @@ exports.updateProject = async (req, res) => {
 exports.toggleStarred = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
-    if (!project) return res.status(404).json({ error: 'Project not found.' });
+    if (!project) return res.json({ error: 'Project not found.' });
 
     project.starred = !project.starred;
     await project.save();
 
-    res.status(200).json({ message: `Project ${project.starred ? 'starred' : 'unstarred'}.`, project });
+    res.json({ message: `Project ${project.starred ? 'starred' : 'unstarred'}.`, project });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to toggle star.', details: err.message });
+    res.json({ error: 'Failed to toggle star.', details: err.message });
   }
 };
-
 
 // Soft delete project
 exports.softDeleteProject = async (req, res) => {
@@ -73,9 +95,9 @@ exports.softDeleteProject = async (req, res) => {
       { new: true }
     );
     if (!project) return res.status(404).json({ error: 'Project not found.' });
-    res.status(200).json({ message: 'Project soft deleted.', project });
+    res.json({ message: 'Project deleted.'});
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete project.' });
+    res.json({ error: 'Failed to delete project.' });
   }
 };
 
@@ -88,8 +110,8 @@ exports.restoreProject = async (req, res) => {
       { new: true }
     );
     if (!project) return res.status(404).json({ error: 'Project not found.' });
-    res.status(200).json({ message: 'Project restored.', project });
+    res.json({ message: 'Project restored.'});
   } catch (err) {
-    res.status(500).json({ error: 'Failed to restore project.' });
+    res.json({ error: 'Failed to restore project.' });
   }
 };

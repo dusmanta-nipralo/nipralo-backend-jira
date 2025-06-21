@@ -88,7 +88,7 @@ exports.softDeleteResource = async (req, res) => {
     resource.level = 5;
     await resource.save();
 
-    res.json({ message: 'Resource soft deleted' });
+    res.json({ message: 'Resource deleted'});
   } catch (err) {
     res.status(500).json({ message: 'Failed to delete resource', error: err.message });
   }
