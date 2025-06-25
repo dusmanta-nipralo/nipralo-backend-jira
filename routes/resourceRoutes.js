@@ -8,7 +8,7 @@ router.use(auth);
 router.use(validAuth);
 
 // Resource CRUD
-router.post('/:clientId/resources', clientController.createResource);
+router.post('/', clientController.createResource);
 router.get('/:clientId/resources', clientController.getResources);
 router.get('/:clientId/resources/:id', clientController.getResourceById);
 router.put('/:id', clientController.updateResource);

@@ -1,6 +1,6 @@
 const TeamMember = require('../models/teamMember');
 const Project = require('../models/project');
-const { sendProjectAssignmentEmail } = require('../utils/teamMemberMail');
+const { sendProjectAssignmentEmail } = require('../utils/nodemailer');
 // Create team member
 exports.createTeamMember = async (req, res) => {
   try {
@@ -41,8 +41,6 @@ exports.getTeamMemberById = async (req, res) => {
 };
 
 //^ Update team member details send mail after assigned
-
-
 // Update team member
 exports.updateTeamMember = async (req, res) => {
   try {

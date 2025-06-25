@@ -52,6 +52,10 @@ app.use('/api/tasks',require('./routes/taskRoutes'));
 
 //create status on board
 app.use('/api/statusBoards',require('./routes/statusBoardRoutes'))
+
+app.use('/api/settings',require('./routes/settingsRoutes'));
+
+app.use('/api/task-time',require('./routes/taskTimeRoutes'));
 const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

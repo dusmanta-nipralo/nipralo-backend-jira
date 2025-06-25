@@ -1,135 +1,184 @@
-const TimeEntry = require('../models/timeTracking');
+// controllers/timeTrackingController.js
+const Task = require('../models/task');
 const Project = require('../models/project');
-let {Parser} = require('json2csv')
+const TeamMember = require('../models/teamMember');
+const { generateTeamViewCSV, generateTimeViewCSV } = require('../utils/csv');
 
-//create time  entry
-exports.addTimeEntry = async (req, res) => {
+// Helper: Calculate totals
+function addProjectAndGrandTotals(summary) {
+  const grandTotal = { hours: 0, minutes: 0 };
+
+  for (const project in summary) {
+    let projectMinutes = 0;
+    for (const member in summary[project]) {
+      const time = summary[project][member];
+      projectMinutes += (time.hours || 0) * 60 + (time.minutes || 0);
+    }
+    summary[project]['Total'] = {
+      hours: Math.floor(projectMinutes / 60),
+      minutes: projectMinutes % 60
+    };
+    grandTotal.hours += Math.floor(projectMinutes / 60);
+    grandTotal.minutes += projectMinutes % 60;
+  }
+
+  // Normalize grand total
+  grandTotal.hours += Math.floor(grandTotal.minutes / 60);
+  grandTotal.minutes = grandTotal.minutes % 60;
+  summary['Total'] = grandTotal;
+
+  return summary;
+}
+
+// Team view
+exports.getTimeTrackingTeamView = async (req, res) => {
   try {
-    const { projectId, member, date, hours } = req.body;
+    const tasks = await Task.find({ level: 1 }).populate('projectId assignee');
+    const summary = {};
 
-    const project = await Project.findById(projectId);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
+    tasks.forEach(task => {
+      if (!task.projectId || !task.assignee) return;
 
-    const timeEntry = new TimeEntry({
-      project: projectId,
-      member,
-      date,
-      hours,
-      status: 1
+      const projectName = task.projectId.name;
+      const memberName = task.assignee.name;
+      const time = task.timeSpent || { hours: 0, minutes: 0 };
+
+      if (!summary[projectName]) summary[projectName] = {};
+      if (!summary[projectName][memberName]) summary[projectName][memberName] = { hours: 0, minutes: 0 };
+
+      summary[projectName][memberName].hours += time.hours;
+      summary[projectName][memberName].minutes += time.minutes;
     });
 
-    await timeEntry.save();
-    res.status(201).json(timeEntry);
+    // Normalize and add totals
+    for (const project in summary) {
+      for (const member in summary[project]) {
+        const time = summary[project][member];
+        if (time.minutes >= 60) {
+          time.hours += Math.floor(time.minutes / 60);
+          time.minutes %= 60;
+        }
+      }
+    }
+
+    const finalSummary = addProjectAndGrandTotals(summary);
+    res.status(200).json({ success: true, data: finalSummary });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to add time entry', details: err.message });
+    res.status(500).json({ success: false, message: 'Error generating time tracking summary', error: err.message });
   }
 };
 
-//get all
-exports.getTimeSummary = async (req, res) => {
+// Time view
+exports.getTimeTrackingTimeView = async (req, res) => {
   try {
-    const { view = 'team' } = req.query;
+    const tasks = await Task.find({ level: 1 }).populate('assignee');
+    const summary = {};
 
-    const groupField = view === 'time' ? '$date' : '$member';
+    tasks.forEach(task => {
+      if (!task.assignee) return;
 
-    const summary = await TimeEntry.aggregate([
-      { $match: { status: 1 } },
-      {
-        $group: {
-          _id: { project: '$project', key: groupField },
-          totalHours: { $sum: '$hours' }
-        }
-      },
-      {
-        $group: {
-          _id: '$_id.project',
-          entries: {
-            $push: {
-              key: '$_id.key',
-              totalHours: '$totalHours'
-            }
-          },
-          totalHoursForProject: { $sum: '$totalHours' }
-        }
-      },
-      {
-        $lookup: {
-          from: 'projects',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'project'
-        }
-      },
-      { $unwind: '$project' },
-      {
-        $project: {
-          projectName: '$project.name',
-          entries: 1,
-          totalHoursForProject: 1
+      const date = new Date(task.updatedAt).toISOString().slice(0, 10);
+      const memberName = task.assignee.name;
+      const time = task.timeSpent || { hours: 0, minutes: 0 };
+
+      if (!summary[date]) summary[date] = {};
+      if (!summary[date][memberName]) summary[date][memberName] = { hours: 0, minutes: 0 };
+
+      summary[date][memberName].hours += time.hours;
+      summary[date][memberName].minutes += time.minutes;
+    });
+
+    for (const date in summary) {
+      for (const member in summary[date]) {
+        const time = summary[date][member];
+        if (time.minutes >= 60) {
+          time.hours += Math.floor(time.minutes / 60);
+          time.minutes %= 60;
         }
       }
-    ]);
- console.log(summary)
-    const grandTotalHours = summary.reduce((acc, item) => acc + item.totalHoursForProject, 0);
-console.log(grandTotalHours)
-    res.status(200).json({ summary, grandTotalHours });
+    }
+
+    const finalSummary = addProjectAndGrandTotals(summary);
+    res.status(200).json({ success: true, data: finalSummary });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch time summary.', details: err.message });
+    res.status(500).json({ success: false, message: 'Error generating time tracking time view', error: err.message });
   }
 };
 
-//export csv
-exports.exportTimeSummaryCSV = async (req, res) => {
+// Download team view CSV
+exports.exportTeamViewCSV = async (req, res) => {
   try {
-    const { view = 'team' } = req.query;
+    const tasks = await Task.find({ level: 1 }).populate('projectId assignee');
+    const summary = {};
 
-    const rawData = await TimeEntry.aggregate([
-      { $match: { status: 1 } },
-      {
-        $lookup: {
-          from: 'projects',
-          localField: 'project',
-          foreignField: '_id',
-          as: 'projectInfo'
-        }
-      },
-      { $unwind: '$projectInfo' },
-      {
-        $project: {
-          Project: '$projectInfo.name',
-          Member: '$member',
-          Date: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
-          Hours: '$hours'
+    tasks.forEach(task => {
+      if (!task.projectId || !task.assignee) return;
+      const project = task.projectId.name;
+      const member = task.assignee.name;
+      const time = task.timeSpent || { hours: 0, minutes: 0 };
+
+      if (!summary[project]) summary[project] = {};
+      if (!summary[project][member]) summary[project][member] = { hours: 0, minutes: 0 };
+
+      summary[project][member].hours += time.hours;
+      summary[project][member].minutes += time.minutes;
+    });
+
+    for (const p in summary) {
+      for (const m in summary[p]) {
+        const t = summary[p][m];
+        if (t.minutes >= 60) {
+          t.hours += Math.floor(t.minutes / 60);
+          t.minutes %= 60;
         }
       }
-    ]);
+    }
 
-    const grandTotal = rawData.reduce((sum, r) => sum + r.Hours, 0);
-    rawData.push({ Project: 'Total', Member: '', Date: '', Hours: grandTotal });
-
-    const fields = view === 'time'
-      ? ['Project', 'Date', 'Hours']
-      : ['Project', 'Member', 'Hours'];
-
-    const data = view === 'time'
-      ? rawData.map(r => ({
-          Project: r.Project,
-          Date: r.Date,
-          Hours: r.Hours
-        }))
-      : rawData.map(r => ({
-          Project: r.Project,
-          Member: r.Member,
-          Hours: r.Hours
-        }));
-
-    const parser = new Parser({ fields });
-    const csv = parser.parse(data);
-
+    const finalSummary = addProjectAndGrandTotals(summary);
+    const csv = generateTeamViewCSV(finalSummary);
     res.header('Content-Type', 'text/csv');
-    res.attachment(`project_time_summary_${view}.csv`);
-    return res.send(csv);
+    res.attachment('team-view-report.csv');
+    res.send(csv);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to export CSV.', details: err.message });
+    res.status(500).json({ message: 'CSV export failed', error: err.message });
+  }
+};
+
+// Download time view CSV
+exports.exportTimeViewCSV = async (req, res) => {
+  try {
+    const tasks = await Task.find({ level: 1 }).populate('assignee');
+    const summary = {};
+
+    tasks.forEach(task => {
+      if (!task.assignee) return;
+      const date = new Date(task.updatedAt).toISOString().slice(0, 10);
+      const member = task.assignee.name;
+      const time = task.timeSpent || { hours: 0, minutes: 0 };
+
+      if (!summary[date]) summary[date] = {};
+      if (!summary[date][member]) summary[date][member] = { hours: 0, minutes: 0 };
+
+      summary[date][member].hours += time.hours;
+      summary[date][member].minutes += time.minutes;
+    });
+
+    for (const d in summary) {
+      for (const m in summary[d]) {
+        const t = summary[d][m];
+        if (t.minutes >= 60) {
+          t.hours += Math.floor(t.minutes / 60);
+          t.minutes %= 60;
+        }
+      }
+    }
+
+    const finalSummary = addProjectAndGrandTotals(summary);
+    const csv = generateTimeViewCSV(finalSummary);
+    res.header('Content-Type', 'text/csv');
+    res.attachment('time-view-report.csv');
+    res.send(csv);
+  } catch (err) {
+    res.status(500).json({ message: 'CSV export failed', error: err.message });
   }
 };

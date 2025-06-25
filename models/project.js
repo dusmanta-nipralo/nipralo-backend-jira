@@ -14,7 +14,9 @@ const ProjectSchema = new mongoose.Schema({
   starred:{
     type:Boolean,
     default:false
-  }
+  },
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true }
 });
 
 module.exports = mongoose.model('Project', ProjectSchema);

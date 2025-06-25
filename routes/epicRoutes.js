@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const epicController = require('../controllers/epicController');
+const auth = require('../middlewares/auth');
+let  validAuth = require('../middlewares/authValid');
 
+router.use(auth);
+router.use(validAuth);
 router.post('/', epicController.createEpic);
 
 router.get('/', epicController.getAllEpics);
