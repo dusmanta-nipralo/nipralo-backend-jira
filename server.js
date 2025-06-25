@@ -7,7 +7,6 @@ const { initSocket } = require('./utils/socket');
 
 dotenv.config();
 connectDB();
-
 const app = express();
 const server = http.createServer(app); // wrap express app for socket.io
 initSocket(server); // init socket.io
@@ -52,6 +51,13 @@ app.use('/api/tasks',require('./routes/taskRoutes'));
 
 //create status on board
 app.use('/api/statusBoards',require('./routes/statusBoardRoutes'))
+
+app.use('/api/settings',require('./routes/settingsRoutes'));
+
+app.use('/api/task-time',require('./routes/taskTimeRoutes'));
+
+app.use('/api/allWorks', require('./routes/allWorkRoutes'));
+
 const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

@@ -12,6 +12,7 @@ router.post('/', teamMemberController.createTeamMember);
 // Get all active team members by projectId
 router.get('/:projectId', teamMemberController.getTeamMembers);
 
+router.get('/',teamMemberController.getTeamMembers)
 // Get a single team member by member ID
 router.get('/member/:id', teamMemberController.getTeamMemberById);
 

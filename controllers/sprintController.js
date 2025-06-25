@@ -84,17 +84,48 @@ exports.getSprintSummary = async (req, res) => {
     const sprint = await Sprint.findById(req.params.id);
     if (!sprint) return res.status(404).json({ error: 'Sprint not found' });
 
-    const backlogCount = await Backlog.countDocuments({
+    const allTasks = await Backlog.find({
       sprintId: sprint._id,
       level: 1
     });
+
+    const totalTasks = allTasks.length;
+    const completedTasks = allTasks.filter(t => t.status === 'DONE').length;
+
+    const backlogCount = totalTasks; // Same as above, kept for clarity
+
+    const now = new Date();
+    const start = new Date(sprint.startDate);
+    const end = new Date(sprint.endDate);
+    const duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+    // Calculate progress
+    const completionPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const completionSummary = `${completedTasks} of ${totalTasks} tasks (${completionPercent}%)`;
+
+    // Determine status
+    let status;
+    if (now < start) {
+      status = 'Not Started';
+    } else if (now >= start && now <= end) {
+      status = 'In Progress';
+    } else if (completedTasks < totalTasks) {
+      const overdueDays = Math.ceil((now - end) / (1000 * 60 * 60 * 24));
+      status = `Overdue by ${overdueDays} day${overdueDays > 1 ? 's' : ''}`;
+    } else {
+      status = 'Completed';
+    }
 
     res.json({
       sprintName: sprint.sprintName,
       sprintGoal: sprint.sprintGoal,
       startDate: sprint.startDate,
       endDate: sprint.endDate,
-      backlogCount
+      duration,
+      status,
+      backlogCount,
+      completedTasks,
+      completionSummary
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch sprint summary', details: err.message });

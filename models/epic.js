@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const epicSchema = new mongoose.Schema({
+  projectId:{
+      type:mongoose.Schema.ObjectId,
+      ref:'Project',
+      required:false,
+      default:null
+  },
   epicName: {
     type: String,
     required: true

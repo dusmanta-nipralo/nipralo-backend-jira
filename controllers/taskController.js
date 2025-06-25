@@ -76,7 +76,6 @@ exports.restoreTask = async (req, res) => {
   }
 };
 
-
 //filter task
 exports.filterTask = async (req, res) => {
   try {

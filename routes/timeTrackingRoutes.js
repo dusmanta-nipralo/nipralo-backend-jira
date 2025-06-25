@@ -7,8 +7,10 @@ let  validAuth = require('../middlewares/authValid');
 router.use(auth);
 router.use(validAuth);
 
-router.post('/timeEntry',timeEntryController.addTimeEntry);
-router.get('/time-summary', timeEntryController.getTimeSummary);
-router.get('/time-summary/export', timeEntryController.exportTimeSummaryCSV);
+router.get('/team',timeEntryController.getTimeTrackingTeamView);
+router.get('/time', timeEntryController.getTimeTrackingTimeView);
+router.get('/team/export', timeEntryController.exportTeamViewCSV);
+router.get('/time/export', timeEntryController.exportTimeViewCSV);
+
 
 module.exports = router;

@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const backlogController = require('../controllers/backlogController');
+const auth = require('../middlewares/auth');
+let  validAuth = require('../middlewares/authValid');
+
+router.use(auth);
+router.use(validAuth);
 
 router.post('/', backlogController.createBacklog);
 

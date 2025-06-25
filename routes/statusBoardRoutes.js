@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const statusColumnController = require('../controllers/statusBoardController');
+const auth = require('../middlewares/auth');
+let  validAuth = require('../middlewares/authValid');
 
+router.use(auth);
+router.use(validAuth);
 // Create
 router.post('/', statusColumnController.createStatusColumn);
 

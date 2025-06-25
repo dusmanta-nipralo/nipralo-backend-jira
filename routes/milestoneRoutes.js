@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const milestoneController = require('../controllers/milestoneController');
+const auth = require('../middlewares/auth');
+let  validAuth = require('../middlewares/authValid');
 
+router.use(auth);
+router.use(validAuth);
 // Create milestone for a project
 router.post('/', milestoneController.createMilestone);
 

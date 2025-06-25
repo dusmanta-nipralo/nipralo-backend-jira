@@ -1,6 +1,7 @@
 const TeamMember = require('../models/teamMember');
 const Project = require('../models/project');
-const { sendProjectAssignmentEmail } = require('../utils/teamMemberMail');
+const { sendProjectAssignmentEmail } = require('../utils/nodemailer');
+let mongoose = require("mongoose");
 // Create team member
 exports.createTeamMember = async (req, res) => {
   try {
@@ -16,8 +17,16 @@ exports.createTeamMember = async (req, res) => {
 // Get active team members for a project
 exports.getTeamMembers = async (req, res) => {
   try {
-    const members = await TeamMember.find({ projectId: req.params.projectId, status: 1 })
-      .populate('projectId', 'name description'); // populate project name, description only
+    const projectId = req.params.projectId;
+
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      return res.status(400).json({ error: 'Invalid projectId' });
+    }
+
+    const members = await TeamMember.find({
+      projectId: projectId,
+      status: 1
+    }).populate('projectId', 'name description');
 
     res.json(members);
   } catch (err) {
@@ -41,8 +50,6 @@ exports.getTeamMemberById = async (req, res) => {
 };
 
 //^ Update team member details send mail after assigned
-
-
 // Update team member
 exports.updateTeamMember = async (req, res) => {
   try {

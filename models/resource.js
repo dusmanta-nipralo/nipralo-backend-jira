@@ -24,7 +24,7 @@ const ResourceSchema = new mongoose.Schema({
      enum:[1,5],
      default:1
   },
-   resourceCount: { type: Number, default: 0 }
+  // resourceCount: { type: Number, default: 0 }
 });
 
 module.exports = {
